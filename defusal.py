@@ -2,8 +2,16 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QTextEdit, QPushButton, QComboBox, QMessageBox
 )
+from PyQt6.QtGui import QIcon
 import sys
 import math
+import os
+
+
+def resource_path(relative):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative)
+    return os.path.join(os.path.dirname(__file__), relative)
 
 
 def safe_split_strip(s):
@@ -13,10 +21,8 @@ def safe_split_strip(s):
 class DefusalLogic:
     @staticmethod
     def wires(s: str) -> str:
-        # accept space-separated colors or continuous letters
         parts = safe_split_strip(s)
         if len(parts) == 0:
-            # maybe user provided letters like rwb
             parts = list(s.strip())
         wires = [p[0].lower() for p in parts]
         n = len(wires)
@@ -37,9 +43,6 @@ class DefusalLogic:
                 return 'Cut the third wire.'
             return 'Cut the last wire.'
         elif n == 5:
-            # expect a second input (color of the light); if user included it after a comma, try to parse
-            # for GUI we'll assume the passed string contains the light color after a '|' separator
-            # Example input: "r w b y p | red"
             if '|' in s:
                 light = s.split('|', 1)[1].strip().lower()
                 lc = light[0] if light else ''
@@ -64,9 +67,8 @@ class DefusalLogic:
             return 'Provide two words like "blue detonate" or "red".'
         color = parts[0]
         text = ' '.join(parts[1:])
-        # Priority rules (clear and non-overlapping)
         if color == 'blue' and 'detonate' in text:
-            return 'Press once and hold (follow release rules).'  # the original printed 'press once and down arrow'
+            return 'Press once and hold (follow release rules).'
         if color == 'red' and 'abort' in text:
             return 'Press and hold (follow indicator rules).'
         if color == 'red':
@@ -90,7 +92,6 @@ class DefusalLogic:
 
     @staticmethod
     def tiles(s: str) -> str:
-        # expect exactly two tile colors (letters or words)
         parts = safe_split_strip(s)
         if len(parts) == 0:
             parts = list(s.strip())
@@ -105,15 +106,13 @@ class DefusalLogic:
 
     @staticmethod
     def keypads(s: str) -> str:
-        # expect four integers separated by spaces representing the labels
         parts = safe_split_strip(s)
         if len(parts) != 4:
-            return 'Provide 4 numbers separated by spaces (labels for buttons top-left top-right bottom-left bottom-right).'
+            return 'Provide 4 numbers separated by spaces.'
         try:
             labels = [int(p) for p in parts]
         except ValueError:
             return 'All labels must be integers.'
-        # A corrected, simpler heuristic: sort buttons by label ascending and return their positions
         positions = ['top left', 'top right', 'bottom left', 'bottom right']
         paired = list(zip(labels, positions))
         paired.sort(key=lambda x: x[0])
@@ -131,7 +130,6 @@ class DefusalLogic:
             return 'Binary must be a sequence of 0s and 1s.'
         if len(bits) < 7:
             return 'Binary input must be at least 7 bits.'
-        # simplified deterministic rules
         ones = bits.count(1)
         zeros = bits.count(0)
         if ones == 0:
@@ -150,7 +148,6 @@ class DefusalLogic:
 
     @staticmethod
     def mathematics(s: str) -> str:
-        # map 4 letters to two two-digit numbers and multiply
         mapping = {'a':'1','b':'3','c':'7','d':'2','e':'4','f':'5','g':'6','h':'0','i':'8','j':'9'}
         s = s.strip().lower()
         if len(s) != 4 or not all(ch.isalpha() for ch in s):
@@ -165,9 +162,8 @@ class DefusalLogic:
 
     @staticmethod
     def color_code(s: str) -> str:
-        # expect format: lights | display (example: "rgby | rgbw")
         if '|' not in s:
-            return 'Provide input as "lights_top_to_bottom | display_letters".'
+            return 'Provide "lights | display".'
         lights, display = [part.strip() for part in s.split('|',1)]
         x = 0
         mapping_display = {'r':1,'g':3,'b':2,'y':3,'w':4}
@@ -186,19 +182,17 @@ class DefusalLogic:
     def multi_buttons(s: str) -> str:
         parts = safe_split_strip(s)
         if len(parts) != 6:
-            return 'Provide 6 numbers separated by spaces.'
+            return 'Provide 6 numbers.'
         try:
             nums = [int(p) for p in parts]
         except ValueError:
             return 'All inputs must be integers.'
-        # simplified deterministic ordering: map each to a color by threshold and print a sensible order
         colors = []
         for i, n in enumerate(nums):
             if n < 6:
                 colors.append(['red','orange','yellow','green','blue','purple'][i%6])
             else:
                 colors.append(['orange','red','green','yellow','purple','blue'][i%6])
-        # return unique ordering preserving first occurrence
         seen = []
         order = []
         for c in colors:
@@ -209,18 +203,17 @@ class DefusalLogic:
 
     @staticmethod
     def timing(s: str) -> str:
-        # expect format: "NN NN | ab" or "12 | ab" etc. Simpler: two-digit pair and two letters: "12 ab"
         parts = safe_split_strip(s)
         if len(parts) < 2:
-            return 'Provide a two-digit number pair and two letters, example: "12 ab".'
+            return 'Provide a two-digit number pair and two letters ("12 ab").'
         numbers = parts[0]
         letters = parts[1]
         if len(numbers) < 2:
-            return 'Need two digits in the number pair.'
+            return 'Need two digits.'
         try:
             x = int(numbers[0]) + int(numbers[1])
         except Exception:
-            return 'Number pair must be digits.'
+            return 'Digits only.'
         mapping = {'a':4,'b':3,'c':7,'d':9}
         vals = [mapping.get(ch,0) for ch in letters[:2]]
         y = sum(vals)
@@ -245,7 +238,7 @@ class DefusalLogic:
     def divisibility(s: str) -> str:
         parts = safe_split_strip(s)
         if len(parts) == 0:
-            return 'Provide up to 3 numbers separated by spaces.'
+            return 'Provide up to 3 numbers.'
         out = []
         for p in parts[:3]:
             try:
@@ -257,7 +250,6 @@ class DefusalLogic:
             three = number % 3 == 0
             five = number % 5 == 0
             seven = number % 7 == 0
-            # Deterministic rule set (non-overlapping):
             if not (two or three or five or seven):
                 out.append(f'{number}: F')
             elif two and not (three or five or seven):
@@ -269,7 +261,6 @@ class DefusalLogic:
             elif seven and not (two or three or five):
                 out.append(f'{number}: C')
             else:
-                # fallback classification by sum of true conditions
                 scond = sum([two, three, five, seven])
                 letters = ['A','B','C','D','E','F']
                 out.append(f'{number}: {letters[(scond-1) % len(letters)]}')
@@ -279,7 +270,12 @@ class DefusalLogic:
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('defuser v4.1')
+
+        # Correct icon path for PyInstaller
+        ico_path = resource_path("defusal.ico")
+        self.setWindowIcon(QIcon(ico_path))
+
+        self.setWindowTitle('defuser v4')
         self.resize(700, 450)
 
         central = QWidget()
@@ -321,13 +317,13 @@ class MainWindow(QMainWindow):
             'button': 'Enter like: "blue detonate" or "red" or "white abort"',
             'hexadecimal': 'Enter space-separated two-digit hex bytes: e.g. "41 42 43"',
             'tiles': 'Enter two tile colors, e.g. "r g" or "red green"',
-            'keypads': 'Enter 4 integer labels like "12 4 8 25" (top-left top-right bottom-left bottom-right)',
-            'binary': 'Enter a 7-bit binary string like "0110010" or spaced bits',
-            'mathematics': 'Enter exactly 4 letters a-j, e.g. "abcd"',
-            'color code': 'Enter "lights_top_to_bottom | display_letters", e.g. "rgby | rgbw"',
-            'multi buttons': 'Enter 6 integers separated by spaces',
-            'timing': 'Enter number pair and two letters, e.g. "12 ab"',
-            'divisibility': 'Enter up to 3 numbers separated by spaces'
+            'keypads': 'Enter 4 integer labels like "12 4 8 25"',
+            'binary': 'Enter a 7-bit string like "0110010"',
+            'mathematics': 'Enter 4 letters a-j, e.g. "abcd"',
+            'color code': 'Enter "lights | display", e.g. "rgby | rgbw"',
+            'multi buttons': 'Enter 6 integers',
+            'timing': 'Enter number pair + 2 letters, e.g. "12 ab"',
+            'divisibility': 'Enter up to 3 numbers'
         }
         self.prompt_label.setText('Input: ' + notes.get(module_name, ''))
 
@@ -348,6 +344,9 @@ class MainWindow(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+
+    app.setWindowIcon(QIcon(resource_path("defusal.ico")))
+
     win = MainWindow()
     win.show()
     sys.exit(app.exec())
